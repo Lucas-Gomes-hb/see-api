@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.py[cod]
+venv/
+.venv/
+env/
+
+# Certificados e chaves SSL — nunca commitar
+*.pem
+*.key
+*.crt
+*.p12
+*.jks
+
+# Variáveis de ambiente
+.env
+
+# Logs
+*.log
