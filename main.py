@@ -23,6 +23,7 @@ from moviebox_api.v3.core import Homepage as V3Homepage, DownloadableVideoFilesD
 from moviebox_api.v3.core import ItemDetails as V3ItemDetails, SeasonDetails as V3SeasonDetails, Search as V3Search
 from moviebox_api.v3.exceptions import ZeroSearchResultsError as V3ZeroResultsError
 from moviebox_api.v3.http_client import MovieBoxHttpClient
+from moviebox_api.v3.models.homepage import RootHomepageModel
 
 mb_session = MbSession()
 
@@ -145,7 +146,15 @@ async def home():
         return _home_cache["data"]
     try:
         async with MovieBoxHttpClient() as client:
-            page = await V3Homepage(client).get_content_model()
+            hp = V3Homepage(client)
+            raw = await hp.get_content()
+            for item in raw.get("items", []):
+                subjects = [
+                    s for s in item.get("subjects", [])
+                    if isinstance(s.get("cover"), dict) and s["cover"].get("url")
+                ]
+                item["subjects"] = subjects
+            page = RootHomepageModel.model_validate(raw)
 
         current_year = str(_time.strftime("%Y"))
 
