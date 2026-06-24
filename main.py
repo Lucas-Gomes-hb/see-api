@@ -154,6 +154,11 @@ async def home():
                     if isinstance(s.get("cover"), dict) and s["cover"].get("url")
                 ]
                 item["subjects"] = subjects
+                if isinstance(item.get("customData"), dict):
+                    item["customData"] = {
+                        k: v for k, v in item["customData"].items()
+                        if not k.startswith("show")
+                    }
             page = RootHomepageModel.model_validate(raw)
 
         current_year = str(_time.strftime("%Y"))
@@ -515,8 +520,9 @@ async def details_v3(subject_id: str):
 async def proxy_video(request: Request, url: str = Query(...)):
     vid_headers = {
         "Accept": "*/*",
+        "Accept-Encoding": "identity",
         "User-Agent": "Mozilla/5.0 (X11; Linux x86_64; rv:137.0) Gecko/20100101 Firefox/137.0",
-        "Origin": "h5.aoneroom.com",
+        "Origin": "https://h5.aoneroom.com",
         "Referer": "https://fmoviesunblocked.net/",
     }
     range_header = request.headers.get("range")
@@ -525,7 +531,12 @@ async def proxy_video(request: Request, url: str = Query(...)):
 
     try:
         from fastapi.responses import StreamingResponse
-        req = s.get(url, headers=vid_headers, stream=True, timeout=60)
+        import asyncio
+        loop = asyncio.get_event_loop()
+        req = await loop.run_in_executor(
+            None,
+            lambda: requests.get(url, headers=vid_headers, stream=True, timeout=30)
+        )
         ct = req.headers.get("content-type", "video/mp4")
         cr = req.headers.get("content-range", "")
         cl = req.headers.get("content-length", "")
@@ -536,6 +547,8 @@ async def proxy_video(request: Request, url: str = Query(...)):
                 for chunk in req.iter_content(chunk_size=65536):
                     if chunk:
                         yield chunk
+            except Exception:
+                pass  # client disconnected or CDN closed — stop streaming cleanly
             finally:
                 req.close()
 
